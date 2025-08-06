@@ -480,8 +480,7 @@ if __name__ == "__main__":
             server_name=SERVER_HOST,
             server_port=SERVER_PORT,
             share=SHARE_GRADIO,
-            show_error=True,
-            enable_queue=ENABLE_QUEUE
+            show_error=True
         )
         
     except Exception as e:
