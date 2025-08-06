@@ -12,6 +12,9 @@ from langchain.vectorstores import FAISS
 from langchain.llms import Ollama
 from langchain.chains import RetrievalQA
 
+from docx import Document
+import asyncio
+
 # ---------------------
 # 1) CONFIG
 # ---------------------
@@ -35,33 +38,27 @@ def extract_pages(path):
 
 def build_rag(pdf_path):
     global DOCUMENT_PAGES, CURRENT_PAGE, QA_CHAIN, RETRIEVER
-
     # 1) raw pages
     DOCUMENT_PAGES = extract_pages(pdf_path)
     CURRENT_PAGE   = 0
-
     # 2) load & chunk
+    # Tune chunk_size and chunk_overlap for latency/recall tradeoff. For large docs, try chunk_size=1200, chunk_overlap=100.
+    # For even faster search, use faiss-gpu if available.
     loader = PyPDFLoader(pdf_path)
     docs   = loader.load()
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=800, chunk_overlap=200
     )
     chunks = splitter.split_documents(docs)
-
     # 3) embeddings & FAISS
-    texts   = [c.page_content for c in chunks]
-    embeddings = [EMBED_MODEL.encode(t) for t in texts]
-    dim = embeddings[0].shape[0]
-    index = faiss.IndexFlatIP(dim)
-    index.add(np.vstack(embeddings))
-    store = FAISS(embeddings=EMBED_MODEL, index=index, texts=texts)
-
+    embedding_model = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    store = FAISS.from_documents(chunks, embedding_model)
     # 4) retriever with MMR
     RETRIEVER = store.as_retriever(
         search_type="mmr", search_kwargs={"k":4, "fetch_k":8}
     )
-
     # 5) LLM + map-reduce QA
+    # To use a GPU-accelerated backend, replace Ollama here with e.g. llama.cpp or vLLM integration.
     llm = Ollama(model=OLLAMA_MODEL, temperature=0.2)
     QA_CHAIN = RetrievalQA.from_chain_type(
         llm=llm,
@@ -73,12 +70,11 @@ def build_rag(pdf_path):
 # ---------------------
 # 4) HANDLERS
 # ---------------------
-def upload_and_process(pdf_file):
+async def upload_and_process(pdf_file):
     if pdf_file is None:
         return "❌ No file", "", ""
     try:
-        # build RAG index
-        build_rag(pdf_file.name)
+        await asyncio.to_thread(build_rag, pdf_file.name)
         # preview first snippet
         snippet = DOCUMENT_PAGES[0][:500] + "…" if DOCUMENT_PAGES else ""
         # embed PDF for preview
@@ -93,7 +89,7 @@ def upload_and_process(pdf_file):
     except Exception as e:
         return f"❌ Error: {e}", "", ""
 
-def show_prev_page():
+async def show_prev_page():
     global CURRENT_PAGE
     if not DOCUMENT_PAGES:
         return "No pages loaded"
@@ -101,7 +97,7 @@ def show_prev_page():
     txt = DOCUMENT_PAGES[CURRENT_PAGE]
     return txt[:500] + "…" if len(txt) > 500 else txt
 
-def show_next_page():
+async def show_next_page():
     global CURRENT_PAGE
     if not DOCUMENT_PAGES:
         return "No pages loaded"
@@ -109,7 +105,7 @@ def show_next_page():
     txt = DOCUMENT_PAGES[CURRENT_PAGE]
     return txt[:500] + "…" if len(txt) > 500 else txt
 
-def chat_and_retrieve(mode, query, history):
+async def chat_and_retrieve(mode, query, history):
     if QA_CHAIN is None:
         return history, history, "❌ Upload a PDF first"
 
@@ -118,32 +114,42 @@ def chat_and_retrieve(mode, query, history):
         # just summarize full doc
         full_text = "\n\n".join(DOCUMENT_PAGES)
         llm = Ollama(model=OLLAMA_MODEL, temperature=0.2)
-        summary = llm.predict(f"Summarize in 3 sentences:\n\n{full_text}")
+        summary = await asyncio.to_thread(llm.predict, f"Summarize in 3 sentences:\n\n{full_text}")
         history.append((f"[Summarize]", summary.strip()))
         return history, history, ""
 
     # Ask mode
     # 1) retrieve passages
-    docs = RETRIEVER.get_relevant_documents(query)
+    docs = await asyncio.to_thread(RETRIEVER.get_relevant_documents, query)
     retrieved = "\n\n---\n\n".join(d.page_content for d in docs)
 
     # 2) answer
     try:
-        ans = QA_CHAIN({"query": query})["result"].strip()
+        ans = (await asyncio.to_thread(QA_CHAIN, {"query": query}))["result"].strip()
     except Exception as e:
         ans = f"❌ LLM error: {e}"
 
     history.append((query, ans))
     return history, history, retrieved
 
-def export_history(history):
+async def export_history(history, filetype="txt"):
     if not history:
         return None
-    path = "chat_log.txt"
-    with open(path, "w") as f:
-        for q,a in history:
-            f.write(f"Q: {q}\nA: {a}\n\n")
-    return path
+    if filetype == "docx":
+        path = "chat_log.docx"
+        doc = Document()
+        for q, a in history:
+            doc.add_paragraph(f"Q: {q}")
+            doc.add_paragraph(f"A: {a}")
+            doc.add_paragraph("")
+        await asyncio.to_thread(doc.save, path)
+        return path
+    else:
+        path = "chat_log.txt"
+        with open(path, "w") as f:
+            for q, a in history:
+                f.write(f"Q: {q}\nA: {a}\n\n")
+        return path
 
 # ---------------------
 # 5) GRADIO UI
@@ -171,6 +177,7 @@ with gr.Blocks(title="DoChat+ w/ LLaMA 3 RAG") as demo:
         question = gr.Textbox(placeholder="Type here…", label="Your Input")
         send_btn = gr.Button("Send")
 
+    filetype_radio = gr.Radio(["txt", "docx"], value="txt", label="File Type")
     export_btn    = gr.Button("📥 Download Chat Log")
     download_file = gr.File()
 
@@ -178,7 +185,7 @@ with gr.Blocks(title="DoChat+ w/ LLaMA 3 RAG") as demo:
     prev_btn.click(show_prev_page, [], preview_text)
     next_btn.click(show_next_page, [], preview_text)
     send_btn.click(chat_and_retrieve, [mode, question, chatbot], [chatbot, chatbot, retrieved_ctx])
-    export_btn.click(export_history, chatbot, download_file)
+    export_btn.click(export_history, [chatbot, filetype_radio], download_file)
 
 if __name__ == "__main__":
     demo.launch()
