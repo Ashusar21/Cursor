@@ -481,7 +481,6 @@ if __name__ == "__main__":
             server_port=SERVER_PORT,
             share=SHARE_GRADIO,
             show_error=True,
-            show_tips=True,
             enable_queue=ENABLE_QUEUE
         )
         

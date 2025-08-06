@@ -1,7 +1,7 @@
 # DoChat+ - Offline AI-Powered Document Intelligence Chatbot
 # Core Dependencies
 
-# Web Interface
+# Web Interface - Latest version
 gradio>=4.0.0
 
 # PDF Processing

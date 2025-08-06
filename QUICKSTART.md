@@ -94,6 +94,12 @@ Once running, open your browser to:
 
 ### Common Issues
 
+**"show_tips parameter error" (Old Gradio)**
+```bash
+# Upgrade to latest Gradio
+pip install --upgrade gradio
+```
+
 **"Model not found"**
 ```bash
 ollama pull llama3.1:8b-instruct-q5_K_M

@@ -385,7 +385,6 @@ def main():
                 server_port=7860,
                 share=False,
                 show_error=True,
-                show_tips=True,
                 enable_queue=True
             )
         
