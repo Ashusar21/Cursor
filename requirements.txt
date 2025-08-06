@@ -1,8 +1,8 @@
 # DoChat+ - Offline AI-Powered Document Intelligence Chatbot
 # Core Dependencies
 
-# Web Interface (compatible with both 3.x and 4.x)
-gradio>=3.50.0
+# Web Interface - Latest version
+gradio>=4.0.0
 
 # PDF Processing
 pypdf>=3.17.0

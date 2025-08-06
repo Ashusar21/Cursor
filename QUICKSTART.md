@@ -94,13 +94,10 @@ Once running, open your browser to:
 
 ### Common Issues
 
-**"show_tips parameter error" (Gradio 4.x)**
+**"show_tips parameter error" (Old Gradio)**
 ```bash
-# Quick fix
-python3 fix_gradio_compatibility.py
-
-# Or manual fix
-pip install gradio>=3.50.0
+# Upgrade to latest Gradio
+pip install --upgrade gradio
 ```
 
 **"Model not found"**

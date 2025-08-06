@@ -37,7 +37,7 @@ graph TD
 
 ### Tech Stack
 
-- **Frontend**: Gradio (Interactive web interface)
+- **Frontend**: Gradio 4.x (Modern web interface)
 - **Backend**: Python with FastAPI-style architecture
 - **LLM**: LLaMA 3.1 8B via Ollama
 - **Embeddings**: Sentence Transformers (all-MiniLM-L6-v2)

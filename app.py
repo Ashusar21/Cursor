@@ -476,25 +476,13 @@ if __name__ == "__main__":
         
         # Create and launch the interface
         demo = create_interface()
-        # Check Gradio version for compatibility
-        import gradio as gr
-        gradio_version = gr.__version__
-        
-        # Prepare launch arguments based on Gradio version
-        launch_args = {
-            "server_name": SERVER_HOST,
-            "server_port": SERVER_PORT,
-            "share": SHARE_GRADIO,
-            "show_error": True,
-            "enable_queue": ENABLE_QUEUE
-        }
-        
-        # Only add show_tips for Gradio < 4.0
-        if hasattr(gr.Blocks, 'launch') and 'show_tips' in gr.Blocks.launch.__code__.co_varnames:
-            launch_args["show_tips"] = True
-        
-        logger.info(f"Launching with Gradio {gradio_version}")
-        demo.launch(**launch_args)
+        demo.launch(
+            server_name=SERVER_HOST,
+            server_port=SERVER_PORT,
+            share=SHARE_GRADIO,
+            show_error=True,
+            enable_queue=ENABLE_QUEUE
+        )
         
     except Exception as e:
         logger.error(f"Failed to start application: {e}")

@@ -80,10 +80,12 @@ def check_required_packages():
                 # Check for compatibility
                 if version != 'unknown':
                     major_version = int(version.split('.')[0])
-                    if major_version >= 3:
-                        print_info(f"Gradio {version} - Compatible with DoChat+")
+                    if major_version >= 4:
+                        print_info(f"Gradio {version} - Latest version ✨")
+                    elif major_version == 3:
+                        print_warning(f"Gradio {version} - Consider upgrading to 4.x for latest features")
                     else:
-                        print_warning(f"Gradio {version} - May need upgrade (recommended: 3.50.0+)")
+                        print_warning(f"Gradio {version} - Please upgrade (required: 4.0.0+)")
                 continue
             else:
                 importlib.import_module(package)
