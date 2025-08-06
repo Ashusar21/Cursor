@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  dochat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dochat-plus
+    ports:
+      - "7860:7860"
+    volumes:
+      # Persist exports and logs
+      - ./exports:/app/exports
+      - ./logs:/app/logs
+      # Optional: Mount custom config
+      - ./config:/app/config
+      # Optional: Mount docs directory for easy access
+      - ./docs:/app/docs
+    environment:
+      # Application configuration
+      - DOCHAT_OLLAMA_MODEL=llama3.1:8b-instruct-q5_K_M
+      - DOCHAT_EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - DOCHAT_HOST=0.0.0.0
+      - DOCHAT_PORT=7860
+      - DOCHAT_LOG_LEVEL=INFO
+      
+      # Performance tuning
+      - DOCHAT_CHUNK_SIZE=800
+      - DOCHAT_RETRIEVAL_K=4
+      - DOCHAT_BATCH_SIZE=32
+    
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 4G
+          cpus: '2.0'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    
+    # Network mode
+    networks:
+      - dochat-network
+
+  # Optional: Add a reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    container_name: dochat-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - dochat
+    networks:
+      - dochat-network
+    restart: unless-stopped
+    # Comment out this service if you don't need reverse proxy
+
+networks:
+  dochat-network:
+    driver: bridge
+
+volumes:
+  # Optional: Create named volumes for persistence
+  dochat-exports:
+    driver: local
+  dochat-logs:
+    driver: local
