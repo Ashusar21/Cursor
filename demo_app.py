@@ -384,8 +384,7 @@ def main():
                 server_name="0.0.0.0",
                 server_port=7860,
                 share=False,
-                show_error=True,
-                enable_queue=True
+                show_error=True
             )
         
     except Exception as e:
