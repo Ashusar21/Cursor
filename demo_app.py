@@ -380,14 +380,24 @@ def main():
             print("\n💡 This is a demonstration version.")
             print("   The full version requires: LLaMA, PyTorch, Transformers, etc.")
             
-            demo.launch(
-                server_name="0.0.0.0",
-                server_port=7860,
-                share=False,
-                show_error=True,
-                show_tips=True,
-                enable_queue=True
-            )
+            # Check Gradio version for compatibility
+            gradio_version = gr.__version__
+            
+            # Prepare launch arguments based on Gradio version
+            launch_args = {
+                "server_name": "0.0.0.0",
+                "server_port": 7860,
+                "share": False,
+                "show_error": True,
+                "enable_queue": True
+            }
+            
+            # Only add show_tips for Gradio < 4.0
+            if hasattr(gr.Blocks, 'launch') and 'show_tips' in gr.Blocks.launch.__code__.co_varnames:
+                launch_args["show_tips"] = True
+            
+            print(f"🌐 Launching with Gradio {gradio_version}")
+            demo.launch(**launch_args)
         
     except Exception as e:
         print(f"❌ Error starting demo: {e}")

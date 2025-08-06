@@ -72,6 +72,19 @@ def check_required_packages():
             # Handle special cases
             if package == 'faiss':
                 importlib.import_module('faiss')
+            elif package == 'gradio':
+                gr = importlib.import_module('gradio')
+                version = getattr(gr, '__version__', 'unknown')
+                print_success(f"{package} v{version} - {description}")
+                
+                # Check for compatibility
+                if version != 'unknown':
+                    major_version = int(version.split('.')[0])
+                    if major_version >= 3:
+                        print_info(f"Gradio {version} - Compatible with DoChat+")
+                    else:
+                        print_warning(f"Gradio {version} - May need upgrade (recommended: 3.50.0+)")
+                continue
             else:
                 importlib.import_module(package)
             print_success(f"{package} - {description}")
